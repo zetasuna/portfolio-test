@@ -98,6 +98,9 @@ pipeline {
     }
     stage('Dependency vulnerability scan') {
       steps {
+        sh '''
+          echo "Hello"
+        '''
         // sh '''
         //   set -eu
         //   docker run --rm -v "$HOST_WORKSPACE:/src" -w /src "$GO_IMAGE" sh -ec \
@@ -127,9 +130,9 @@ pipeline {
       steps {
         withCredentials([
           usernamePassword(
-              credentialsId: 'dockerhub',
-              usernameVariable: 'DOCKERHUB_USER',
-              passwordVariable: 'DOCKERHUB_TOKEN'
+            credentialsId: 'dockerhub',
+            usernameVariable: 'DOCKERHUB_USER',
+            passwordVariable: 'DOCKERHUB_TOKEN'
           )
         ]) {
           sh '''
