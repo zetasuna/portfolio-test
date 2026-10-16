@@ -71,7 +71,7 @@ pipeline {
       }
     }
     stage('Database integration tests') {
-      when { branch 'main' }
+      // when { branch 'main' }
       steps {
         withCredentials([file(credentialsId: 'portfolio-runtime-env', variable: 'RUNTIME_ENV')]) {
           sh '''
@@ -126,7 +126,7 @@ pipeline {
       }
     }
     stage('Publish trusted image') {
-      when { anyOf { branch 'main'; buildingTag() } }
+      // when { anyOf { branch 'main'; buildingTag() } }
       steps {
         withCredentials([
           usernamePassword(
@@ -151,7 +151,7 @@ pipeline {
       }
     }
     stage('Deploy and smoke test') {
-      when { anyOf { branch 'main'; buildingTag() } }
+      // when { anyOf { branch 'main'; buildingTag() } }
       steps {
         withCredentials([file(credentialsId: 'portfolio-runtime-env', variable: 'RUNTIME_ENV')]) {
           sh '''
