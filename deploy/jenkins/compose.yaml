@@ -41,4 +41,5 @@ volumes:
 
 networks:
   edge_net:
-    driver: bridge
+    external: true
+    name: portfolio_edge_net

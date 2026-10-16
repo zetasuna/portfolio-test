@@ -328,7 +328,8 @@ volumes:
 
 networks:
   edge_net:
-    driver: bridge
+    external: true
+    name: postgres_edge_net
   app_net:
     driver: bridge
     internal: true
