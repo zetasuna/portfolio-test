@@ -135,36 +135,36 @@ services:
       retries: 5
       start_period: 10s
 
-  jenkins:
-    image: portfolio-jenkins:local
-    build:
-      context: ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/jenkins
-      dockerfile: Dockerfile
-      args:
-        DOCKER_GID: ${DOCKER_GID:-998}
-    ports:
-      - "127.0.0.1:${JENKINS_HOST_PORT:-8081}:8080"
-    volumes:
-      - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${PROJECT_DIR:?Set PROJECT_DIR}:${PROJECT_DIR:?Set PROJECT_DIR}:ro
-      - /usr/libexec/docker/cli-plugins/docker-buildx:/usr/local/lib/docker/cli-plugins/docker-buildx:ro
-    networks: [edge_net]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-    logging: *default-logging
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -fsS http://127.0.0.1:8080/login >/dev/null || exit 1",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 10
-      start_period: 120s
-    security_opt: [no-new-privileges:true]
+  # jenkins:
+  #   image: portfolio-jenkins:local
+  #   build:
+  #     context: ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/jenkins
+  #     dockerfile: Dockerfile
+  #     args:
+  #       DOCKER_GID: ${DOCKER_GID:-998}
+  #   ports:
+  #     - "127.0.0.1:${JENKINS_HOST_PORT:-8081}:8080"
+  #   volumes:
+  #     - jenkins_home:/var/jenkins_home
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - ${PROJECT_DIR:?Set PROJECT_DIR}:${PROJECT_DIR:?Set PROJECT_DIR}:ro
+  #     - /usr/libexec/docker/cli-plugins/docker-buildx:/usr/local/lib/docker/cli-plugins/docker-buildx:ro
+  #   networks: [edge_net]
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   restart: unless-stopped
+  #   logging: *default-logging
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "curl -fsS http://127.0.0.1:8080/login >/dev/null || exit 1",
+  #       ]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 10
+  #     start_period: 120s
+  #   security_opt: [no-new-privileges:true]
 
   grafana:
     image: grafana/grafana:13.2.4

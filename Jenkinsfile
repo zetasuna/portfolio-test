@@ -162,8 +162,7 @@ pipeline {
             docker compose \
               --project-name portfolio-crud \
               --env-file "$RUNTIME_ENV" --env-file "$WORKSPACE/release.env" \
-              -f "$WORKSPACE/compose.yaml" up -d --no-build --pull always \
-              portfolio-crud-app1-1 portfolio-crud-app2-1 portfolio-crud-app3-1
+              -f "$WORKSPACE/compose.yaml" up -d --no-build --pull always
             if docker run --rm --network host -v "$HOST_WORKSPACE:/src:ro" -w /src -e BASE_URL=http://127.0.0.1:8080 --entrypoint /bin/sh "$CURL_IMAGE" -ec './scripts/smoke.sh'; then
               echo "Smoke test passed for $IMAGE_TAG"
             else
