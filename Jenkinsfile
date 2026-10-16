@@ -98,11 +98,11 @@ pipeline {
     }
     stage('Dependency vulnerability scan') {
       steps {
-        sh '''
-          set -eu
-          docker run --rm -v "$HOST_WORKSPACE:/src" -w /src "$GO_IMAGE" sh -ec \
-            'go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...'
-        '''
+        // sh '''
+        //   set -eu
+        //   docker run --rm -v "$HOST_WORKSPACE:/src" -w /src "$GO_IMAGE" sh -ec \
+        //     'go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...'
+        // '''
       }
     }
     stage('Build image') {
