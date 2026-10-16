@@ -10,9 +10,9 @@ pipeline {
     GO_IMAGE = 'golang:1.27.2-bookworm'
     SCANNER_IMAGE = 'aquasec/trivy:0.69.0'
     CURL_IMAGE = 'curlimages/curl:8.12.1'
-    IMAGE_TAG = ''
-    IMAGE_REPO = ''
-    HOST_WORKSPACE = ''
+    // IMAGE_TAG = ''
+    // IMAGE_REPO = ''
+    // HOST_WORKSPACE = ''
   }
   stages {
     stage('Checkout') {
