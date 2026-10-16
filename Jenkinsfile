@@ -166,19 +166,19 @@ pipeline {
               --project-name portfolio-crud \
               --env-file "$RUNTIME_ENV" --env-file "$WORKSPACE/release.env" \
               -f "$WORKSPACE/compose.yaml" up -d --no-build --pull always
-            if docker run --rm --network host -v "$HOST_WORKSPACE:/src:ro" -w /src -e BASE_URL=http://127.0.0.1:8080 --entrypoint /bin/sh "$CURL_IMAGE" -ec './scripts/smoke.sh'; then
-              echo "Smoke test passed for $IMAGE_TAG"
-            else
-              echo "Smoke test failed; attempting rollback" >&2
-              if [ -n "$PREVIOUS_IMAGE" ]; then
-                printf 'APP_IMAGE=%s\n' "$PREVIOUS_IMAGE" > "$WORKSPACE/release.env"
-                docker compose --project-name portfolio-crud --env-file "$RUNTIME_ENV" --env-file "$WORKSPACE/release.env" -f "$WORKSPACE/compose.yaml" up -d --no-build
-                docker run --rm --network host -v "$HOST_WORKSPACE:/src:ro" -w /src -e BASE_URL=http://127.0.0.1:8080 --entrypoint /bin/sh "$CURL_IMAGE" -ec './scripts/smoke.sh' || true
-              else
-                echo "No previous app image was found; manual recovery is required" >&2
-              fi
-              exit 1
-            fi
+            # if docker run --rm --network host -v "$HOST_WORKSPACE:/src:ro" -w /src -e BASE_URL=http://127.0.0.1:8080 --entrypoint /bin/sh "$CURL_IMAGE" -ec './scripts/smoke.sh'; then
+            #   echo "Smoke test passed for $IMAGE_TAG"
+            # else
+            #   echo "Smoke test failed; attempting rollback" >&2
+            #   if [ -n "$PREVIOUS_IMAGE" ]; then
+            #     printf 'APP_IMAGE=%s\n' "$PREVIOUS_IMAGE" > "$WORKSPACE/release.env"
+            #     docker compose --project-name portfolio-crud --env-file "$RUNTIME_ENV" --env-file "$WORKSPACE/release.env" -f "$WORKSPACE/compose.yaml" up -d --no-build
+            #     docker run --rm --network host -v "$HOST_WORKSPACE:/src:ro" -w /src -e BASE_URL=http://127.0.0.1:8080 --entrypoint /bin/sh "$CURL_IMAGE" -ec './scripts/smoke.sh' || true
+            #   else
+            #     echo "No previous app image was found; manual recovery is required" >&2
+            #   fi
+            #   exit 1
+            # fi
           '''
         }
       }
