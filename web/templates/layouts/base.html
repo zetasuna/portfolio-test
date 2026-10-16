@@ -1,0 +1,17 @@
+{{define "base"}}<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{.Description}}"><meta name="color-scheme" content="light dark">
+  <title>{{.Title}} · Portfolio</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script defer src="/static/js/app.js"></script>
+</head>
+<body>
+<header class="site-header"><div class="container nav-wrap">
+  <a class="brand" href="/" aria-label="Portfolio home"><span class="brand-mark">P</span><span>dev<span class="muted">.portfolio</span></span></a>
+  <nav class="main-nav" aria-label="Main navigation"><a href="/projects">Projects</a><a href="/#about">About</a><a class="nav-cta" href="/admin">Admin ↗</a></nav>
+</div></header>
+<main>{{template "content" .}}</main>
+<footer class="site-footer"><div class="container footer-inner"><span>© 2026 · Built with Go</span><span>Thoughtful software. Reliable systems.</span></div></footer>
+</body></html>{{end}}

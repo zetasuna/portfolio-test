@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+uploads/
+coverage.out
+coverage.html
+*.log
+*.zip
+.DS_Store
+.idea/
+.vscode/
+/release.env

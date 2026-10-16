@@ -1,0 +1,21 @@
+groups:
+  - name: portfolio-availability
+    rules:
+      - alert: PortfolioAppInstanceDown
+        expr: up{job="portfolio-app"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Portfolio app instance is unreachable"
+          description: "Prometheus cannot scrape {{ $labels.app_instance }} for more than 2 minutes."
+      - alert: PortfolioHighHTTP5xxRate
+        expr: |
+          sum(rate(http_server_requests_total{job="portfolio-app",status=~"5.."}[5m]))
+          / clamp_min(sum(rate(http_server_requests_total{job="portfolio-app"}[5m])), 0.001) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Portfolio HTTP 5xx rate is above 5%"
+          description: "More than 5% of requests returned 5xx for 5 minutes."

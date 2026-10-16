@@ -1,0 +1,311 @@
+name: portfolio-crud
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app-common: &app-common
+  image: ${APP_IMAGE:-portfolio-crud:local}
+  build:
+    context: ${PROJECT_DIR:?Set PROJECT_DIR}
+    dockerfile: Dockerfile
+  environment: &app-env
+    DATABASE_URL: postgres://${APP_DB_USER:?Set APP_DB_USER}:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB}?sslmode=disable
+    PORT: "8080"
+    SESSION_TTL: ${SESSION_TTL:-12h}
+    COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+    TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-true}
+    ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,nginx,app1,app2,app3,host.docker.internal}
+    UPLOAD_DIR: /app/uploads
+    MAX_UPLOAD_BYTES: "5242880"
+    TEMPLATE_DIR: /app/web/templates
+    STATIC_DIR: /app/web/static
+    MIGRATIONS_DIR: /app/migrations
+    OTEL_SERVICE_NAME: portfolio-app
+    OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+    OTEL_TRACES_SAMPLER_ARG: ${OTEL_TRACES_SAMPLER_ARG:-1.0}
+  volumes:
+    - uploads_data:/app/uploads
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp:size=32m,noexec,nosuid,nodev
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
+  networks: [app_net, db_net, obs_net]
+  logging: *default-logging
+  healthcheck:
+    test: ["CMD", "/app/portfolio", "healthcheck"]
+    interval: 15s
+    timeout: 3s
+    retries: 5
+    start_period: 25s
+
+services:
+  app1:
+    <<: *app-common
+    command: ["start"]
+    environment:
+      <<: *app-env
+      APP_INSTANCE: app1
+    depends_on:
+      postgres: {condition: service_healthy}
+      otel-collector: {condition: service_healthy}
+
+  app2:
+    <<: *app-common
+    command: ["serve"]
+    environment:
+      <<: *app-env
+      APP_INSTANCE: app2
+    depends_on:
+      app1: {condition: service_healthy}
+      postgres: {condition: service_healthy}
+      otel-collector: {condition: service_healthy}
+
+  app3:
+    <<: *app-common
+    command: ["serve"]
+    environment:
+      <<: *app-env
+      APP_INSTANCE: app3
+    depends_on:
+      app1: {condition: service_healthy}
+      postgres: {condition: service_healthy}
+      otel-collector: {condition: service_healthy}
+
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER:?Set APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}
+      TEST_DB_NAME: ${TEST_DB_NAME:-portfolio_test}
+      PGDATA: /var/lib/postgresql/18/docker
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/postgres/init/01-app-role.sh:/docker-entrypoint-initdb.d/01-app-role.sh:ro
+    networks: [db_net]
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt: [no-new-privileges:true]
+    shm_size: 128mb
+
+  nginx:
+    image: nginxinc/nginx-unprivileged:1.28.0-alpine
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT:-8080}:8080"
+    volumes:
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks: [edge_net, app_net]
+    depends_on:
+      app1: {condition: service_healthy}
+      app2: {condition: service_healthy}
+      app3: {condition: service_healthy}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=32m,mode=1777,noexec,nosuid,nodev
+      - /var/run:size=4m,mode=1777,noexec,nosuid,nodev
+      - /tmp:size=8m,noexec,nosuid,nodev
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  jenkins:
+    image: portfolio-jenkins:local
+    build:
+      context: ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/jenkins
+      dockerfile: Dockerfile
+      args:
+        DOCKER_GID: ${DOCKER_GID:-998}
+    ports:
+      - "127.0.0.1:${JENKINS_HOST_PORT:-8081}:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PROJECT_DIR:?Set PROJECT_DIR}:${PROJECT_DIR:?Set PROJECT_DIR}:ro
+    networks: [edge_net]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/login >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    security_opt: [no-new-privileges:true]
+
+  grafana:
+    image: grafana/grafana:13.2.4
+    ports:
+      - "127.0.0.1:${GRAFANA_HOST_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ENABLE_GZIP: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks: [edge_net, obs_net]
+    depends_on:
+      prometheus: {condition: service_healthy}
+      loki: {condition: service_healthy}
+      tempo: {condition: service_healthy}
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+    security_opt: [no-new-privileges:true]
+
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+      - --web.external-url=http://localhost:9090/
+    volumes:
+      - prometheus_data:/prometheus
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
+    networks: [obs_net]
+    depends_on:
+      app1: {condition: service_healthy}
+      app2: {condition: service_healthy}
+      app3: {condition: service_healthy}
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9090/-/ready || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt: [no-new-privileges:true]
+
+  loki:
+    image: grafana/loki:3.7.8
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - loki_data:/loki
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/loki/loki.yml:/etc/loki/loki.yml:ro
+    networks: [obs_net]
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-health"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    security_opt: [no-new-privileges:true]
+
+  tempo:
+    image: grafana/tempo:3.1.0
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - tempo_data:/var/tempo
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+    networks: [obs_net]
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "/tempo", "--health"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    security_opt: [no-new-privileges:true]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.162.0
+    command: ["--config=/etc/otelcol-contrib/collector.yml"]
+    volumes:
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/otel-collector/collector.yml:/etc/otelcol-contrib/collector.yml:ro
+    networks: [obs_net]
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "validate", "--config=/etc/otelcol-contrib/collector.yml"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    security_opt: [no-new-privileges:true]
+
+  alloy:
+    image: grafana/alloy:v1.20.1
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+    user: "0:0"
+    volumes:
+      - ${PROJECT_DIR:?Set PROJECT_DIR}/deploy/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - alloy_data:/var/lib/alloy/data
+    networks: [obs_net]
+    cap_drop: [ALL]
+    cap_add: [DAC_READ_SEARCH]
+    depends_on:
+      loki: {condition: service_healthy}
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "/bin/alloy", "validate", "/etc/alloy/config.alloy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    security_opt: [no-new-privileges:true]
+
+volumes:
+  postgres_data:
+  uploads_data:
+  jenkins_home:
+  grafana_data:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  alloy_data:
+
+networks:
+  edge_net:
+    driver: bridge
+  app_net:
+    driver: bridge
+    internal: true
+  db_net:
+    driver: bridge
+    internal: true
+  obs_net:
+    driver: bridge
+    internal: true

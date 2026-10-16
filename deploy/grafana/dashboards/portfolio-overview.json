@@ -1,0 +1,26 @@
+{
+  "annotations": {"list": [{"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard"}]},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {"datasource": {"type": "prometheus", "uid": "prometheus"}, "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "reqps"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "id": 1, "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "sum by (instance, app_instance) (rate(http_server_requests_total{job=\"portfolio-app\"}[5m]))", "legendFormat": "{{app_instance}}", "refId": "A"}], "title": "HTTP request rate by instance", "type": "timeseries"},
+    {"datasource": {"type": "prometheus", "uid": "prometheus"}, "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "s", "min": 0}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "id": 2, "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}, "targets": [{"expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket{job=\"portfolio-app\"}[5m])))", "legendFormat": "p50", "refId": "A"}, {"expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{job=\"portfolio-app\"}[5m])))", "legendFormat": "p95", "refId": "B"}, {"expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{job=\"portfolio-app\"}[5m])))", "legendFormat": "p99", "refId": "C"}], "title": "HTTP latency percentiles", "type": "timeseries"},
+    {"datasource": {"type": "prometheus", "uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}, "overrides": []}, "gridPos": {"h": 7, "w": 8, "x": 0, "y": 8}, "id": 3, "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "area", "justifyMode": "center"}, "targets": [{"expr": "100 * sum(rate(http_server_requests_total{job=\"portfolio-app\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_total{job=\"portfolio-app\"}[5m])), 0.001)", "legendFormat": "5xx rate", "refId": "A"}], "title": "HTTP 5xx error rate", "type": "stat"},
+    {"datasource": {"type": "prometheus", "uid": "prometheus"}, "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "index": 0, "text": "DOWN"}, "1": {"color": "green", "index": 1, "text": "UP"}}, "type": "value"}], "max": 1, "min": 0}, "overrides": []}, "gridPos": {"h": 7, "w": 8, "x": 8, "y": 8}, "id": 4, "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"}, "targets": [{"expr": "min(up{job=\"portfolio-app\"})", "legendFormat": "all targets", "refId": "A"}], "title": "All app instances reachable", "type": "stat"},
+    {"datasource": {"type": "prometheus", "uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "short", "min": 0}, "overrides": []}, "gridPos": {"h": 7, "w": 8, "x": 16, "y": 8}, "id": 5, "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "area", "justifyMode": "center"}, "targets": [{"expr": "sum(go_goroutines{job=\"portfolio-app\"})", "legendFormat": "goroutines", "refId": "A"}], "title": "Go goroutines (all instances)", "type": "stat"},
+    {"datasource": {"type": "prometheus", "uid": "prometheus"}, "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}, "overrides": []}, "gridPos": {"h": 8, "w": 24, "x": 0, "y": 15}, "id": 6, "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}, "targets": [{"expr": "sum by (app_instance) (up{job=\"portfolio-app\"})", "legendFormat": "{{app_instance}}", "refId": "A"}], "title": "Scrape health by instance", "type": "timeseries"}
+  ],
+  "refresh": "15s",
+  "schemaVersion": 41,
+  "tags": ["portfolio", "sre", "observability"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Portfolio Service Overview",
+  "uid": "portfolio-overview",
+  "version": 1
+}

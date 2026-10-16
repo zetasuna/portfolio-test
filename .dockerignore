@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+uploads/
+coverage.out
+coverage.html
+*.zip
+*.log
+.DS_Store
+.idea/
+.vscode/

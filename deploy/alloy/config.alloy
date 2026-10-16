@@ -1,0 +1,36 @@
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+local.file_match "docker_json_logs" {
+  path_targets = [{"__path__" = "/var/lib/docker/containers/*/*-json.log", "job" = "docker", "host" = "homelab"}]
+  sync_period = "5s"
+}
+
+loki.source.file "docker_json_logs" {
+  targets    = local.file_match.docker_json_logs.targets
+  forward_to = [loki.process.docker.receiver]
+  tail_from_end = true
+}
+
+loki.process "docker" {
+  stage.docker {}
+  stage.json {
+    expressions = {
+      level      = "level",
+      service    = "service",
+      instance   = "instance",
+      trace_id   = "trace_id",
+      request_id = "request_id",
+    }
+  }
+  stage.labels {
+    values = {
+      level   = "level",
+      service = "service",
+    }
+  }
+  forward_to = [loki.write.local.receiver]
+}
