@@ -19,19 +19,39 @@ pipeline {
       steps {
         checkout scm
         script {
-          env.IMAGE_TAG = sh(returnStdout: true, script: 'git rev-parse --short=12 HEAD').trim()
-          // Docker socket commands execute on the host. Resolve the host path backing the
-          // Jenkins workspace volume; container-only $WORKSPACE paths cannot be bind-mounted.
-          env.HOST_WORKSPACE = sh(returnStdout: true, script: '''
-            set -eu
-            home_source="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination "/var/jenkins_home"}}{{.Source}}{{end}}{{end}}' "$HOSTNAME")"
-            test -n "$home_source"
-            case "$WORKSPACE" in
-              /var/jenkins_home/*) relative="${WORKSPACE#/var/jenkins_home/}" ;;
-              *) echo "Workspace is not under /var/jenkins_home: $WORKSPACE" >&2; exit 1 ;;
-            esac
-            printf '%s/%s' "$home_source" "$relative"
-          ''').trim()
+          env.IMAGE_TAG = sh(
+            returnStdout: true,
+            script: 'git rev-parse --short=12 HEAD'
+          ).trim()
+
+          env.HOST_WORKSPACE = sh(
+            returnStdout: true,
+            script: '''
+              set -eu
+              container_id="$(hostname)"
+              home_source="$(docker inspect \
+                --format='{{range .Mounts}}{{if eq .Destination "/var/jenkins_home"}}{{.Source}}{{end}}{{end}}' \
+                "$container_id")"
+              test -n "$home_source"
+              case "$WORKSPACE" in
+                /var/jenkins_home/*)
+                  relative="${WORKSPACE#/var/jenkins_home/}"
+                  ;;
+                *)
+                  echo "Unexpected workspace: $WORKSPACE" >&2
+                  exit 1
+                  ;;
+              esac
+              printf '%s/%s' "$home_source" "$relative"
+            '''
+          ).trim()
+
+          if (!env.HOST_WORKSPACE?.trim()) {
+              error('HOST_WORKSPACE is empty; check Jenkins Docker volume mapping.')
+          }
+
+          echo "IMAGE_TAG=${env.IMAGE_TAG}"
+          echo "HOST_WORKSPACE=${env.HOST_WORKSPACE}"
         }
       }
     }
