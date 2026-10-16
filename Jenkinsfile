@@ -112,7 +112,7 @@ pipeline {
       steps {
         sh '''
           set -eu
-          docker build --pull --tag portfolio-crud:scan .
+          DOCKER_BUILDKIT=1 docker build --pull --tag portfolio-crud:scan .
         '''
       }
     }
