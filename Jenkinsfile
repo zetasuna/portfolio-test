@@ -106,14 +106,17 @@ pipeline {
       when { anyOf { branch 'main'; buildingTag() } }
       steps {
         withCredentials([
-          string(credentialsId: 'dockerhub-username', variable: 'DOCKERHUB_USER'),
-          string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')
+          usernamePassword(
+              credentialsId: 'dockerhub',
+              usernameVariable: 'DOCKERHUB_USER',
+              passwordVariable: 'DOCKERHUB_TOKEN'
+          )
         ]) {
           sh '''
             set +x
             set -eu
             test -n "$DOCKERHUB_USER"
-            IMAGE_REPO="$DOCKERHUB_USER/portfolio-crud"
+            IMAGE_REPO="$DOCKERHUB_USER/portfolio"
             echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USER" --password-stdin
             docker tag portfolio-crud:scan "$IMAGE_REPO:$IMAGE_TAG"
             docker push "$IMAGE_REPO:$IMAGE_TAG"
